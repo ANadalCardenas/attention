@@ -56,10 +56,8 @@ def get_color_for_attention_score(attention_score):
     Return a tuple of three integers representing a shade of gray for the
     given `attention_score`. Each value should be in the range [0, 255].
     """
-    # Map attention_score (0.0 = low, 1.0 = high) to grayscale (0 = black, 255 = white)
-    value = round((1 - attention_score) * 255)
-    return (value, value, value)
-
+    gray_value = int((1.0 - attention_score) * 255)
+    return (gray_value, gray_value, gray_value)
 
 def visualize_attentions(tokens, attentions):
     """
@@ -71,13 +69,14 @@ def visualize_attentions(tokens, attentions):
     include both the layer number (starting count from 1) and head number
     (starting count from 1).
     """
-    # TODO: Update this function to produce diagrams for all layers and heads.
-    generate_diagram(
-        1,
-        1,
-        tokens,
-        attentions[0][0][0]
-    )
+    num_layers = len(attentions)
+
+    for layer in range(num_layers):
+        # Determina el número de heads para esta capa
+        num_heads = attentions[layer].shape[1]
+        for head in range(num_heads):
+            attention_weights = attentions[layer][0, head].numpy()
+            generate_diagram(layer + 1, head + 1, tokens, attention_weights)
 
 
 def generate_diagram(layer_number, head_number, tokens, attention_weights):
