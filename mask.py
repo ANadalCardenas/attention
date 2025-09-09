@@ -27,7 +27,7 @@ def main():
         sys.exit(f"Input must include mask token {tokenizer.mask_token}.")
 
     # Use model to process input
-    model = TFBertForMaskedLM.from_pretrained(MODEL)
+    model = TFBertForMaskedLM.from_pretrained(MODEL, from_pt=True)
     result = model(**inputs, output_attentions=True)
 
     # Generate predictions
