@@ -1,8 +1,8 @@
 import sys
-import tensorflow as tf
+import torch
 
 from PIL import Image, ImageDraw, ImageFont
-from transformers import AutoTokenizer, TFBertForMaskedLM
+from transformers import AutoTokenizer, AutoModelForMaskedLM
 
 # Pre-trained masked language model
 MODEL = "bert-base-uncased"
@@ -21,23 +21,26 @@ def main():
 
     # Tokenize input
     tokenizer = AutoTokenizer.from_pretrained(MODEL)
-    inputs = tokenizer(text, return_tensors="tf")
-    mask_token_index = get_mask_token_index(tokenizer.mask_token_id, inputs)
-    if mask_token_index is None:
+    inputs = tokenizer(text, return_tensors="pt")
+    mask_token_index = (inputs["input_ids"][0] == tokenizer.mask_token_id).nonzero(as_tuple=True)[0]
+    # mask_token_index = get_mask_token_index(tokenizer.mask_token_id, inputs)
+    if len(mask_token_index) == 0:
         sys.exit(f"Input must include mask token {tokenizer.mask_token}.")
-
+    mask_token_index = mask_token_index.item()
     # Use model to process input
-    model = TFBertForMaskedLM.from_pretrained(MODEL, from_pt=True)
-    result = model(**inputs, output_attentions=True)
+    model = AutoModelForMaskedLM.from_pretrained(MODEL)
+    model.eval()
+    with torch.no_grad():
+        result = model(**inputs, output_attentions=True)
 
     # Generate predictions
-    mask_token_logits = result.logits[0, mask_token_index]
-    top_tokens = tf.math.top_k(mask_token_logits, K).indices.numpy()
-    for token in top_tokens:
-        print(text.replace(tokenizer.mask_token, tokenizer.decode([token])))
+    logits = result.logits[0, mask_token_index]
+    top_tokens = torch.topk(logits, K).indices.tolist()
+    for t in top_tokens:
+        print(text.replace(tokenizer.mask_token, tokenizer.decode([t])))
 
     # Visualize attentions
-    visualize_attentions(inputs.tokens(), result.attentions)
+    visualize_attentions(tokenizer.convert_ids_to_tokens(inputs["input_ids"][0]), result.attentions)
 
 
 def get_mask_token_index(mask_token_id, inputs):
